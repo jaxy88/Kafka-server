@@ -1,16 +1,15 @@
 services:
   kafka:
+    # ... tu configuración actual de kafka ...
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka
     ports:
-      - "9092:9092" # Para tu Worker en Mac
-      - "9093:9093" # Para otros contenedores internos
+      - "9092:9092"
+      - "9093:9093"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
-      # Definimos dos puertos: 9092 para afuera, 9093 para adentro
       KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:9093,CONTROLLER://0.0.0.0:29093'
-      # El Worker en Mac usará localhost:9092. AKHQ usará kafka:9093.
       KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092,INTERNAL://kafka:9093'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT'
@@ -20,6 +19,7 @@ services:
       KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
 
   akhq:
+    # ... tu configuración actual de akhq ...
     image: tchiotludo/akhq:latest
     container_name: akhq
     ports:
@@ -30,7 +30,20 @@ services:
           connections:
             docker-kafka:
               properties:
-                # AKHQ ahora usa el puerto interno 9093
                 bootstrap.servers: "kafka:9093"
+    depends_on:
+      - kafka
+
+  worker:
+    build: . # O especifica la ruta de tu Dockerfile
+    container_name: rust_worker
+    restart: always
+    environment:
+      # IMPORTANTE: Dentro de docker, el worker usa el puerto interno 9093
+      - KAFKA_BOOTSTRAP_SERVER=kafka:9093 
+      - MONGO_URI=${MONGO_URI}
+      - MINIO_SERVER_HOST=${MINIO_SERVER_HOST}
+    volumes:
+      - ./uploads:/app/uploads # Esto mapea tu carpeta local al contenedor
     depends_on:
       - kafka
