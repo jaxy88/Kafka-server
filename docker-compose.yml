@@ -3,17 +3,17 @@ services:
     image: confluentinc/cp-kafka:7.6.0
     container_name: kafka
     ports:
-      - "9092:9092"
+      - "9092:9092" # Para tu Worker en Mac
+      - "9093:9093" # Para otros contenedores internos
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: 'broker,controller'
-      # Escucha en todos los interfaces
-      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093'
-      # ANUNCIA el nombre 'kafka' para que los contenedores se conecten entre sí
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092' 
+      # Definimos dos puertos: 9092 para afuera, 9093 para adentro
+      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:9093,CONTROLLER://0.0.0.0:29093'
+      # El Worker en Mac usará localhost:9092. AKHQ usará kafka:9093.
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092,INTERNAL://kafka:9093'
       KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
-      # Usa el nombre de servicio 'kafka' en lugar de 'localhost'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT'
       KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qz'
@@ -30,6 +30,7 @@ services:
           connections:
             docker-kafka:
               properties:
-                bootstrap.servers: "kafka:9092"
+                # AKHQ ahora usa el puerto interno 9093
+                bootstrap.servers: "kafka:9093"
     depends_on:
       - kafka
